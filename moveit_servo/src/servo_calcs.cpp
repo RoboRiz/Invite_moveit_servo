@@ -188,17 +188,37 @@ void ServoCalcs::start()
     // I do not know of a robot that takes acceleration commands.
     // However, some controllers check that this data is non-empty.
     // Send all zeros, for now.
-    std::vector<double> acceleration(num_joints_);
-    point.accelerations = acceleration;
+    point.accelerations.resize(num_joints_);
   }
   initial_joint_trajectory->points.push_back(point);
   last_sent_command_ = initial_joint_trajectory;
 
   current_state_ = planning_scene_monitor_->getStateMonitor()->getCurrentState();
+  /*
   tf_moveit_to_ee_frame_ = current_state_->getGlobalLinkTransform(parameters_.planning_frame).inverse() *
                            current_state_->getGlobalLinkTransform(parameters_.ee_frame_name);
+                           
   tf_moveit_to_robot_cmd_frame_ = current_state_->getGlobalLinkTransform(parameters_.planning_frame).inverse() *
                                   current_state_->getGlobalLinkTransform(parameters_.robot_link_command_frame);
+
+  */
+
+  
+  Eigen::Affine3d tmp_Affine = current_state_->getGlobalLinkTransform(parameters_.planning_frame).inverse() *
+                           current_state_->getGlobalLinkTransform(parameters_.ee_frame_name);
+
+  tf_moveit_to_ee_frame_.translation() = tmp_Affine.translation();
+  tf_moveit_to_ee_frame_.linear() = tmp_Affine.rotation();
+
+
+
+  tmp_Affine = current_state_->getGlobalLinkTransform(parameters_.planning_frame).inverse() *
+                                  current_state_->getGlobalLinkTransform(parameters_.robot_link_command_frame);
+
+  tf_moveit_to_robot_cmd_frame_.translation() = tmp_Affine.translation();
+  tf_moveit_to_robot_cmd_frame_.linear() = tmp_Affine.rotation();
+
+
 
   stop_requested_ = false;
   thread_ = std::thread([this] { mainCalcLoop(); });
@@ -299,6 +319,8 @@ void ServoCalcs::calculateSingleIteration()
   // Calculate this transform to ensure it is available via C++ API
   // We solve (planning_frame -> base -> robot_link_command_frame)
   // by computing (base->planning_frame)^-1 * (base->robot_link_command_frame)
+
+  /*
   tf_moveit_to_robot_cmd_frame_ = current_state_->getGlobalLinkTransform(parameters_.planning_frame).inverse() *
                                   current_state_->getGlobalLinkTransform(parameters_.robot_link_command_frame);
 
@@ -306,6 +328,25 @@ void ServoCalcs::calculateSingleIteration()
   // Calculate this transform to ensure it is available via C++ API
   tf_moveit_to_ee_frame_ = current_state_->getGlobalLinkTransform(parameters_.planning_frame).inverse() *
                            current_state_->getGlobalLinkTransform(parameters_.ee_frame_name);
+
+  */
+
+  
+  Eigen::Affine3d tmp_Affine = current_state_->getGlobalLinkTransform(parameters_.planning_frame).inverse() *
+                           current_state_->getGlobalLinkTransform(parameters_.ee_frame_name);
+
+  tf_moveit_to_ee_frame_.translation() = tmp_Affine.translation();
+  tf_moveit_to_ee_frame_.linear() = tmp_Affine.rotation();
+
+
+
+  tmp_Affine = current_state_->getGlobalLinkTransform(parameters_.planning_frame).inverse() *
+                                  current_state_->getGlobalLinkTransform(parameters_.robot_link_command_frame);
+
+  tf_moveit_to_robot_cmd_frame_.translation() = tmp_Affine.translation();
+  tf_moveit_to_robot_cmd_frame_.linear() = tmp_Affine.rotation();
+
+
 
   have_nonzero_command_ = have_nonzero_twist_stamped_ || have_nonzero_joint_command_;
 
@@ -584,6 +625,7 @@ bool ServoCalcs::convertDeltasToOutgoingCmd(trajectory_msgs::JointTrajectory& jo
   if (!enforcePositionLimits())
   {
     suddenHalt(joint_trajectory);
+    //changed by Riza
     status_ = StatusCode::JOINT_BOUND;
   }
 
@@ -672,21 +714,26 @@ void ServoCalcs::applyVelocityScaling(Eigen::ArrayXd& delta_theta, double singul
 
   if (collision_scale > 0 && collision_scale < 1)
   {
+    //changed by Riza
     status_ = StatusCode::DECELERATE_FOR_COLLISION;
     ROS_WARN_STREAM_THROTTLE_NAMED(ROS_LOG_THROTTLE_PERIOD, LOGNAME, SERVO_STATUS_CODE_MAP.at(status_));
   }
   else if (collision_scale == 0)
   {
+    //changed by Riza
     status_ = StatusCode::HALT_FOR_COLLISION;
   }
 
   delta_theta = collision_scale * singularity_scale * delta_theta;
 
+  //changed by Riza
+  
   if (status_ == StatusCode::HALT_FOR_COLLISION)
   {
     ROS_WARN_STREAM_THROTTLE_NAMED(3, LOGNAME, "Halting for collision!");
     delta_theta_.setZero();
   }
+  
 }
 
 // Possibly calculate a velocity scaling factor, due to proximity of singularity and direction of motion
@@ -740,6 +787,7 @@ double ServoCalcs::velocityScalingFactorForSingularity(const Eigen::VectorXd& co
     {
       velocity_scale = 1. - (ini_condition - parameters_.lower_singularity_threshold) /
                                 (parameters_.hard_stop_singularity_threshold - parameters_.lower_singularity_threshold);
+      //changed by Riza
       status_ = StatusCode::DECELERATE_FOR_SINGULARITY;
       ROS_WARN_STREAM_THROTTLE_NAMED(ROS_LOG_THROTTLE_PERIOD, LOGNAME, SERVO_STATUS_CODE_MAP.at(status_));
     }
@@ -748,6 +796,7 @@ double ServoCalcs::velocityScalingFactorForSingularity(const Eigen::VectorXd& co
     else if (ini_condition > parameters_.hard_stop_singularity_threshold)
     {
       velocity_scale = 0;
+      //changed by Riza
       status_ = StatusCode::HALT_FOR_SINGULARITY;
       ROS_WARN_STREAM_THROTTLE_NAMED(ROS_LOG_THROTTLE_PERIOD, LOGNAME, SERVO_STATUS_CODE_MAP.at(status_));
     }
@@ -835,8 +884,10 @@ void ServoCalcs::suddenHalt(trajectory_msgs::JointTrajectory& joint_trajectory)
   // being 0 seconds in the past, the smallest supported timestep is added as time from start to the trajectory point.
   point.time_from_start.fromNSec(1);
 
-  point.positions.resize(num_joints_);
-  point.velocities.resize(num_joints_);
+  if (parameters_.publish_joint_positions)
+    point.positions.resize(num_joints_);
+  if (parameters_.publish_joint_velocities)
+    point.velocities.resize(num_joints_);
 
   // Assert the following loop is safe to execute
   assert(original_joint_state_.position.size() >= num_joints_);
@@ -1119,6 +1170,7 @@ bool ServoCalcs::changeControlDimensions(moveit_msgs::ChangeControlDimensions::R
 
 bool ServoCalcs::resetServoStatus(std_srvs::Empty::Request& /*req*/, std_srvs::Empty::Response& /*res*/)
 {
+  //changed by Riza
   status_ = StatusCode::NO_WARNING;
   return true;
 }

@@ -85,6 +85,7 @@ public:
    * @return true if a valid transform was available
    */
   bool getCommandFrameTransform(Eigen::Isometry3d& transform);
+  //bool getCommandFrameTransform(Eigen::Affine3d& transform);
   bool getCommandFrameTransform(geometry_msgs::TransformStamped& transform);
 
   /**
@@ -95,6 +96,7 @@ public:
    * @return true if a valid transform was available
    */
   bool getEEFrameTransform(Eigen::Isometry3d& transform);
+  //bool getEEFrameTransform(Eigen::Affine3d& transform);
   bool getEEFrameTransform(geometry_msgs::TransformStamped& transform);
 
   /** \brief Pause or unpause processing servo commands while keeping the timers alive */

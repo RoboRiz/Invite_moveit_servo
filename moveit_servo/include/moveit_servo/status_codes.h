@@ -41,6 +41,14 @@
 #include <string>
 #include <unordered_map>
 
+/*
+namespace std {
+  template <> struct hash<moveit_servo::StatusCode> {
+    size_t operator() (const moveit_servo::StatusCode &t) const { return size_t(t); }
+  };
+}
+*/
+
 namespace moveit_servo
 {
 enum class StatusCode : int8_t
@@ -54,7 +62,19 @@ enum class StatusCode : int8_t
   JOINT_BOUND = 5
 };
 
-const std::unordered_map<StatusCode, std::string>
+struct EnumClassHash
+{
+    template <typename T>
+    std::size_t operator()(T t) const
+    {
+        return static_cast<std::size_t>(t);
+    }
+};
+
+ 
+
+
+const std::unordered_map<StatusCode, std::string, EnumClassHash>
     SERVO_STATUS_CODE_MAP({ { StatusCode::INVALID, "Invalid" },
                             { StatusCode::NO_WARNING, "No warnings" },
                             { StatusCode::DECELERATE_FOR_SINGULARITY, "Close to a singularity, decelerating" },
@@ -62,4 +82,21 @@ const std::unordered_map<StatusCode, std::string>
                             { StatusCode::DECELERATE_FOR_COLLISION, "Close to a collision, decelerating" },
                             { StatusCode::HALT_FOR_COLLISION, "Collision detected, emergency stop" },
                             { StatusCode::JOINT_BOUND, "Close to a joint bound (position or velocity), halting" } });
+
+
+
+/*
+template <class T, typename U>
+struct PairEqual{
+    const bool operator()(const std::pair<T, U> &lhs, const std::pair<T, U> &rhs) const{
+        return lhs.first == rhs.first && lhs.second == rhs.second;
+    }
+};
+*/
+
 }  // namespace moveit_servo
+
+
+
+
+

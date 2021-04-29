@@ -15,6 +15,11 @@ endif()
 
 find_package(Boost REQUIRED)
 find_package(Eigen3 REQUIRED)
+
+if(NOT EIGEN3_INCLUDE_DIRS)
+  set(EIGEN3_INCLUDE_DIRS ${EIGEN3_INCLUDE_DIR})
+endif()
+
 find_package(catkin REQUIRED COMPONENTS
   control_msgs
   control_toolbox

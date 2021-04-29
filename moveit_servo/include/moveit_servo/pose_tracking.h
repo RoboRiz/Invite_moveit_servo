@@ -71,7 +71,8 @@ enum class PoseTrackingStatusCode : int8_t
   STOP_REQUESTED = 3
 };
 
-const std::unordered_map<PoseTrackingStatusCode, std::string> POSE_TRACKING_STATUS_CODE_MAP(
+
+const std::unordered_map<PoseTrackingStatusCode, std::string, moveit_servo::EnumClassHash> POSE_TRACKING_STATUS_CODE_MAP(
     { { PoseTrackingStatusCode::INVALID, "Invalid" },
       { PoseTrackingStatusCode::SUCCESS, "Success" },
       { PoseTrackingStatusCode::NO_RECENT_TARGET_POSE, "No recent target pose" },

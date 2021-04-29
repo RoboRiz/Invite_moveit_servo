@@ -113,20 +113,19 @@ void CollisionCheck::run(const ros::TimerEvent& timer_event)
   collision_detected_ = false;
 
   // Do a timer-safe distance-based collision detection
-  collision_result_.clear();
-  getLockedPlanningSceneRO()->getCollisionEnv()->checkRobotCollision(collision_request_, collision_result_,
-                                                                     *current_state_);
-  scene_collision_distance_ = collision_result_.distance;
-  collision_detected_ |= collision_result_.collision;
-  collision_result_.print();
+  //collision_result_.clear();
+  //getLockedPlanningSceneRO()->getCollisionEnv()->checkRobotCollision(collision_request_, collision_result_,*current_state_);
+  
+
 
   collision_result_.clear();
   // Self-collisions and scene collisions are checked separately so different thresholds can be used
-  getLockedPlanningSceneRO()->getCollisionEnvUnpadded()->checkSelfCollision(collision_request_, collision_result_,
+  getLockedPlanningSceneRO()->checkCollisionUnpadded(collision_request_, collision_result_,
                                                                             *current_state_, acm_);
-  self_collision_distance_ = collision_result_.distance;
+  scene_collision_distance_ = collision_result_.distance;
   collision_detected_ |= collision_result_.collision;
-  collision_result_.print();
+  //collision_result_.print();
+  ROS_WARN_STREAM("Collision Result" << collision_result_.collision );
 
   velocity_scale_ = 1;
   // If we're definitely in collision, stop immediately
